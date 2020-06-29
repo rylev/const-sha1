@@ -1,0 +1,22 @@
+name: Build and Test
+
+on: 
+  pull_request:
+  push:
+    branches:
+      - master
+
+env:
+  RUSTFLAGS: -Dwarnings
+
+jobs:
+  min-supported:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: install
+      run: rustup install nightly
+
+    - name: tests
+      run: cargo +nightly test 
