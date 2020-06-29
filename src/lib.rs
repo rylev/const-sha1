@@ -1,3 +1,13 @@
+//! A const evaluated sha1 function.
+//!
+//! # Use
+//!
+//! ```
+//! const fn signature() -> [u32; 5] {
+//!     const_sha1::sha1(stringify!(MyType).as_bytes()).data
+//! }
+//! ```
+
 #![feature(const_if_match)]
 #![feature(const_loop)]
 
@@ -359,7 +369,9 @@ const fn r4(
     (block, w, z)
 }
 
+/// A sha1 digest
 pub struct Digest {
+    /// The sha1 digest's data
     pub data: [u32; 5],
 }
 
