@@ -1,3 +1,7 @@
+[![crates.io](https://img.shields.io/crates/v/const-sha1.svg)](https://crates.io/crates/const-sha1)
+[![docs.rs](https://docs.rs/const-sha1/badge.svg)](https://docs.rs/const-sha1/0.1.0/const-sha1)
+[![Build and Test](https://github.com/rylev/const-sha1/workflows/Build%20and%20Test/badge.svg?event=push)](https://github.com/rylev/const-sha1/actions)
+
 # const-sha1
 
 A sha1 implementation useable in const contexts. 

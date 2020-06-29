@@ -3,5 +3,11 @@ name = "const-sha1"
 version = "0.1.0"
 authors = ["Ryan Levick <ryan.levick@gmail.com>"]
 edition = "2018"
+license = "Apache-2.0/MIT"
+repository = "https://github.com/rylev/const-sha1"
+documentation = "https://docs.rs/const-sha1"
+description = "A sha1 implementation for use in const contexts"
+keywords = ["const", "sha1", "hash", "digest"]
+readme = "README.md"
 
 [dependencies]
