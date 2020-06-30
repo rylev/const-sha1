@@ -8,9 +8,6 @@
 //! }
 //! ```
 
-#![feature(const_if_match)]
-#![feature(const_loop)]
-
 /// A const evaluated sha1 function.
 ///
 /// # Use
