@@ -61,10 +61,7 @@ const fn process_blocks(
         num_elems: usize,
     ) -> [u8; 64] {
         let mut i = 0;
-        loop {
-            if i >= num_elems {
-                break;
-            }
+        while i < num_elems {
             data[i] = slice[offset + i];
             i += 1;
         }
@@ -72,10 +69,7 @@ const fn process_blocks(
     }
 
     let mut i = 0;
-    loop {
-        if i >= data.len() {
-            break;
-        }
+    while i < data.len() {
         if data.len() - i >= 64 {
             let chunk_block = as_block(data, i);
             len = 16 * 4;
@@ -83,7 +77,7 @@ const fn process_blocks(
             i += 64;
         } else {
             let num_elems = data.len() - i;
-            blocks.data = clone_from_slice_64(blocks.data, data, i, num_elems);
+            blocks.data = clone_from_slice_64(blocks.data, &data, i, num_elems);
             blocks.len = num_elems as u32;
             break;
         }
@@ -187,41 +181,30 @@ const fn process_state(mut state: [u32; 5], block: [u32; 16]) -> [u32; 5] {
 }
 
 const fn digest(mut state: [u32; 5], len: u64, blocks: Blocks) -> Digest {
-    const fn clone_from_array_64(
+    const fn clone_from_slice_128(
         mut data: [u8; 128],
-        array: [u8; 64],
+        slice: &[u8],
         offset: usize,
         num_elems: usize,
     ) -> [u8; 128] {
         let mut i = 0;
-        loop {
-            if i >= num_elems {
-                break;
-            }
-            data[i] = array[offset + i];
+        while i < num_elems {
+            data[i] = slice[offset + i];
             i += 1;
         }
         data
     }
 
-    const fn clone_from_array_8(
-        mut data: [u8; 128],
-        array: [u8; 8],
-        offset: usize,
-        num_elems: usize,
-    ) -> [u8; 128] {
+    const fn clone_slice_128(mut data: [u8; 128], slice: &[u8], offset: usize) -> [u8; 128] {
         let mut i = 0;
-        loop {
-            if i >= num_elems {
-                break;
-            }
-            data[offset + i] = array[i];
+        while i < slice.len() {
+            data[offset + i] = slice[i];
             i += 1;
         }
         data
     }
 
-    const fn as_block(input: [u8; 128], offset: usize) -> [u32; 16] {
+    const fn as_block(input: &[u8], offset: usize) -> [u32; 16] {
         let mut result = [0u32; 16];
 
         let mut i = 0;
@@ -249,16 +232,16 @@ const fn digest(mut state: [u32; 5], len: u64, blocks: Blocks) -> Digest {
     ];
     let mut last = [0; 128];
     let blocklen = blocks.len as usize;
-    last = clone_from_array_64(last, blocks.data, 0, blocklen);
+    last = clone_from_slice_128(last, &blocks.data, 0, blocklen);
     last[blocklen] = 0x80;
 
     if blocklen < 56 {
-        last = clone_from_array_8(last, extra, 56, 8);
-        state = process_state(state, as_block(last, 0));
+        last = clone_slice_128(last, &extra, 56);
+        state = process_state(state, as_block(&last, 0));
     } else {
-        last = clone_from_array_8(last, extra, 120, 8);
-        state = process_state(state, as_block(last, 0));
-        state = process_state(state, as_block(last, 64));
+        last = clone_slice_128(last, &extra, 120);
+        state = process_state(state, as_block(&last, 0));
+        state = process_state(state, as_block(&last, 64));
     }
     Digest { data: state }
 }
@@ -267,7 +250,7 @@ const fn rol(value: u32, bits: usize) -> u32 {
     (value << bits) | (value >> (32 - bits))
 }
 
-const fn blk(block: &[u32; 16], i: usize) -> u32 {
+const fn blk(block: &[u32], i: usize) -> u32 {
     let value = block[(i + 13) & 15] ^ block[(i + 8) & 15] ^ block[(i + 2) & 15] ^ block[i];
     rol(value, 1)
 }
