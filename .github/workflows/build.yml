@@ -10,13 +10,17 @@ env:
   RUSTFLAGS: -Dwarnings
 
 jobs:
-  min-supported:
-    runs-on: windows-latest
+  test:
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-
-    - name: install
-      run: rustup install beta
-
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: beta
+        profile: minimal
+        override: true
+        components: rustfmt
     - name: tests
-      run: cargo +beta test 
+      run: cargo test 
+    - name: fmt
+      run: cargo fmt -- --check
