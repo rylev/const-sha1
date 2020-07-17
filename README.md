@@ -14,7 +14,9 @@ A sha1 implementation useable in const contexts.
  }
  ```
 
- This crate currently requires nightly for [const if/match](https://github.com/rust-lang/rust/issues/49146) and [const loop](https://github.com/rust-lang/rust/issues/52000) which should be stable in Rust 1.46 which is due to release in the late August 2020 timeframe.
+# Minimum Supported Rust Version (MSRV)
+
+This crate requires Rust 1.46.0-beta or newer due to the use of some const expression features.
 
 ## Attribution
 
