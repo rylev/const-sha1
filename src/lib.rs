@@ -122,7 +122,7 @@ const fn process_blocks(
     while i < data.len() {
         if data.len() - i >= 64 {
             let chunk_block = as_block(data, i);
-            len = 16 * 4;
+            len += 64;
             state = process_state(state, chunk_block);
             i += 64;
         } else {
@@ -464,6 +464,8 @@ mod tests {
              "4300320394f7ee239bcdce7d3b8bcee173a0cd5c"),
             ("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
              "cef734ba81a024479e09eb5a75b6ddae62e6abf1"),
+             ("pinterface({1f6db258-e803-48a1-9546-eb7353398884};pinterface({faa585ea-6214-4217-afda-7f46de5869b3};{96369f54-8eb6-48f0-abce-c1b211e627c3}))", 
+             "b1b3deeb1552c97f3f36152f7baeec0f6ac159bc")
         ];
 
         for &(s, expected) in tests.iter() {
@@ -471,18 +473,5 @@ mod tests {
 
             assert_eq!(hash, expected);
         }
-
-        let mut head = vec![
-            0x11u8, 0xf4, 0x7a, 0xd5, 0x7b, 0x73, 0x42, 0xc0, 0xab, 0xae, 0x87, 0x8b, 0x1e, 0x16,
-            0xad, 0xee,
-        ];
-        let s = "pinterface({1f6db258-e803-48a1-9546-eb7353398884};pinterface({faa585ea-6214-4217-afda-7f46de5869b3};{96369f54-8eb6-48f0-abce-c1b211e627c3}))";
-        head.extend(s.as_bytes());
-        let mut m = sha1::Sha1::new();
-        m.update(&head);
-        assert_eq!(
-            sha1(&ConstString::from_slice(&head)).to_string(),
-            m.digest().to_string()
-        )
     }
 }
