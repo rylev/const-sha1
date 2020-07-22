@@ -3,21 +3,23 @@
 //! # Use
 //!
 //! ```
-//! const fn signature() -> [u32; 5] {
-//!     const_sha1::sha1(stringify!(MyType).as_bytes()).data
+//! const fn signature() -> const_sha1::Digest {
+//!     const_sha1::sha1(&const_sha1::ConstBuffer::from_slice(stringify!(MyType).as_bytes()))
 //! }
 //! ```
+
+#![deny(missing_docs)]
 
 /// A const evaluated sha1 function.
 ///
 /// # Use
 ///
 /// ```
-/// const fn signature() -> [u32; 5] {
-///     const_sha1::sha1(stringify!(MyType).as_bytes()).data
+/// const fn signature() -> const_sha1::Digest {
+///     const_sha1::sha1(&const_sha1::ConstBuffer::from_slice(stringify!(MyType).as_bytes()))
 /// }
 /// ```
-pub const fn sha1(data: &[u8]) -> Digest {
+pub const fn sha1(data: &ConstBuffer) -> Digest {
     let state: [u32; 5] = [0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476, 0xc3d2e1f0];
     let len: u64 = 0;
     let blocks = Blocks {
@@ -28,6 +30,72 @@ pub const fn sha1(data: &[u8]) -> Digest {
     digest(state, len, blocks)
 }
 
+/// The size of the ConstBuffer
+pub const BUFFER_SIZE: usize = 1024;
+
+/// A buffer of a constant size suitable for use in const contexts
+pub struct ConstBuffer {
+    data: [u8; BUFFER_SIZE],
+    head: usize,
+}
+
+impl ConstBuffer {
+    /// Convert a slice into a `ConstBuffer`
+    pub const fn from_slice(slice: &[u8]) -> Self {
+        let s = Self::new();
+        s.push_slice(slice)
+    }
+
+    /// Create an empty `ConstBuffer`
+    pub const fn new() -> Self {
+        Self {
+            data: [0; BUFFER_SIZE],
+            head: 0,
+        }
+    }
+
+    /// Push a slice of bytes on to the buffer
+    pub const fn push_slice(self, slice: &[u8]) -> Self {
+        self.push_amount(slice, slice.len())
+    }
+
+    /// Get a byte at a given index
+    pub const fn get(&self, index: usize) -> u8 {
+        self.data[index]
+    }
+
+    /// Get the length of the buffer that has been written to
+    pub const fn len(&self) -> usize {
+        self.head
+    }
+
+    /// Get the buffer as a slice
+    pub const fn as_slice(&self) -> &[u8] {
+        &self.data
+    }
+
+    /// Push another `ConstBuffer` on to the current buffer
+    pub const fn push_other(self, other: Self) -> Self {
+        self.push_amount(other.as_slice(), other.len())
+    }
+
+    const fn push_amount(mut self, slice: &[u8], amount: usize) -> Self {
+        let mut i = 0;
+        while i < amount {
+            self.data[self.head + i] = slice[i];
+            i += 1;
+        }
+        self.head += i;
+        self
+    }
+}
+
+impl std::fmt::Debug for ConstBuffer {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:x?}", &self.data[0..self.head])
+    }
+}
+
 struct Blocks {
     len: u32,
     data: [u8; 64],
@@ -35,20 +103,20 @@ struct Blocks {
 
 const fn process_blocks(
     mut blocks: Blocks,
-    data: &[u8],
+    data: &ConstBuffer,
     mut len: u64,
     mut state: [u32; 5],
 ) -> (Blocks, u64, [u32; 5]) {
-    const fn as_block(input: &[u8], offset: usize) -> [u32; 16] {
+    const fn as_block(input: &ConstBuffer, offset: usize) -> [u32; 16] {
         let mut result = [0u32; 16];
 
         let mut i = 0;
         while i != 16 {
             let off = offset + (i * 4);
-            result[i] = (input[off + 3] as u32)
-                | ((input[off + 2] as u32) << 8)
-                | ((input[off + 1] as u32) << 16)
-                | ((input[off] as u32) << 24);
+            result[i] = (input.get(off + 3) as u32)
+                | ((input.get(off + 2) as u32) << 8)
+                | ((input.get(off + 1) as u32) << 16)
+                | ((input.get(off) as u32) << 24);
             i += 1;
         }
         result
@@ -72,12 +140,12 @@ const fn process_blocks(
     while i < data.len() {
         if data.len() - i >= 64 {
             let chunk_block = as_block(data, i);
-            len = 16 * 4;
+            len += 64;
             state = process_state(state, chunk_block);
             i += 64;
         } else {
             let num_elems = data.len() - i;
-            blocks.data = clone_from_slice_64(blocks.data, &data, i, num_elems);
+            blocks.data = clone_from_slice_64(blocks.data, data.as_slice(), i, num_elems);
             blocks.len = num_elems as u32;
             break;
         }
@@ -352,7 +420,35 @@ const fn r4(
 /// A sha1 digest
 pub struct Digest {
     /// The sha1 digest's data
-    pub data: [u32; 5],
+    data: [u32; 5],
+}
+
+impl Digest {
+    /// Returns the 160 bit (20 byte) digest as a byte array.
+    pub const fn bytes(&self) -> [u8; 20] {
+        [
+            (self.data[0] >> 24) as u8,
+            (self.data[0] >> 16) as u8,
+            (self.data[0] >> 8) as u8,
+            (self.data[0] >> 0) as u8,
+            (self.data[1] >> 24) as u8,
+            (self.data[1] >> 16) as u8,
+            (self.data[1] >> 8) as u8,
+            (self.data[1] >> 0) as u8,
+            (self.data[2] >> 24) as u8,
+            (self.data[2] >> 16) as u8,
+            (self.data[2] >> 8) as u8,
+            (self.data[2] >> 0) as u8,
+            (self.data[3] >> 24) as u8,
+            (self.data[3] >> 16) as u8,
+            (self.data[3] >> 8) as u8,
+            (self.data[3] >> 0) as u8,
+            (self.data[4] >> 24) as u8,
+            (self.data[4] >> 16) as u8,
+            (self.data[4] >> 8) as u8,
+            (self.data[4] >> 0) as u8,
+        ]
+    }
 }
 
 impl std::fmt::Display for Digest {
@@ -386,10 +482,12 @@ mod tests {
              "4300320394f7ee239bcdce7d3b8bcee173a0cd5c"),
             ("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
              "cef734ba81a024479e09eb5a75b6ddae62e6abf1"),
+             ("pinterface({1f6db258-e803-48a1-9546-eb7353398884};pinterface({faa585ea-6214-4217-afda-7f46de5869b3};{96369f54-8eb6-48f0-abce-c1b211e627c3}))", 
+             "b1b3deeb1552c97f3f36152f7baeec0f6ac159bc")
         ];
 
         for &(s, expected) in tests.iter() {
-            let hash = sha1(s.as_bytes()).to_string();
+            let hash = sha1(&ConstBuffer::from_slice(s.as_bytes())).to_string();
 
             assert_eq!(hash, expected);
         }
