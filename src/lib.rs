@@ -8,6 +8,8 @@
 //! }
 //! ```
 
+#![deny(missing_docs)]
+
 /// A const evaluated sha1 function.
 ///
 /// # Use
@@ -30,6 +32,8 @@ pub const fn sha1(data: &ConstBuffer) -> Digest {
 
 /// The size of the ConstBuffer
 pub const BUFFER_SIZE: usize = 1024;
+
+/// A buffer of a constant size suitable for use in const contexts
 pub struct ConstBuffer {
     data: [u8; BUFFER_SIZE],
     head: usize,
