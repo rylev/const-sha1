@@ -11,3 +11,6 @@ keywords = ["const", "sha1", "hash", "digest"]
 readme = "README.md"
 
 [dependencies]
+
+[dev-dependencies]
+sha1 = "0.6"

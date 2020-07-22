@@ -2,7 +2,7 @@
 //!
 //! # Use
 //!
-//! ```
+//! ```ignore
 //! const fn signature() -> [u32; 5] {
 //!     const_sha1::sha1(stringify!(MyType).as_bytes()).data
 //! }
@@ -12,12 +12,12 @@
 ///
 /// # Use
 ///
-/// ```
+/// ```ignore
 /// const fn signature() -> [u32; 5] {
 ///     const_sha1::sha1(stringify!(MyType).as_bytes()).data
 /// }
 /// ```
-pub const fn sha1(data: &[u8]) -> Digest {
+pub const fn sha1(data: &ConstString) -> Digest {
     let state: [u32; 5] = [0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476, 0xc3d2e1f0];
     let len: u64 = 0;
     let blocks = Blocks {
@@ -28,6 +28,56 @@ pub const fn sha1(data: &[u8]) -> Digest {
     digest(state, len, blocks)
 }
 
+pub const STRING_SIZE: usize = 1024;
+pub struct ConstString {
+    data: [u8; STRING_SIZE],
+    head: usize,
+}
+
+impl ConstString {
+    pub const fn from_slice(slice: &[u8]) -> Self {
+        let s = Self::new();
+        s.push_slice(slice)
+    }
+
+    pub const fn new() -> Self {
+        Self {
+            data: [0; STRING_SIZE],
+            head: 0,
+        }
+    }
+
+    pub const fn push_slice(self, slice: &[u8]) -> Self {
+        self.push_amount(slice, slice.len())
+    }
+
+    pub const fn get(&self, index: usize) -> u8 {
+        self.data[index]
+    }
+
+    pub const fn len(&self) -> usize {
+        self.head
+    }
+
+    pub const fn as_slice(&self) -> &[u8] {
+        &self.data
+    }
+
+    pub const fn push_other(self, other: Self) -> Self {
+        self.push_amount(other.as_slice(), other.len())
+    }
+
+    pub const fn push_amount(mut self, slice: &[u8], amount: usize) -> Self {
+        let mut i = 0;
+        while i < amount {
+            self.data[self.head + i] = slice[i];
+            i += 1;
+        }
+        self.head += i;
+        self
+    }
+}
+
 struct Blocks {
     len: u32,
     data: [u8; 64],
@@ -35,20 +85,20 @@ struct Blocks {
 
 const fn process_blocks(
     mut blocks: Blocks,
-    data: &[u8],
+    data: &ConstString,
     mut len: u64,
     mut state: [u32; 5],
 ) -> (Blocks, u64, [u32; 5]) {
-    const fn as_block(input: &[u8], offset: usize) -> [u32; 16] {
+    const fn as_block(input: &ConstString, offset: usize) -> [u32; 16] {
         let mut result = [0u32; 16];
 
         let mut i = 0;
         while i != 16 {
             let off = offset + (i * 4);
-            result[i] = (input[off + 3] as u32)
-                | ((input[off + 2] as u32) << 8)
-                | ((input[off + 1] as u32) << 16)
-                | ((input[off] as u32) << 24);
+            result[i] = (input.get(off + 3) as u32)
+                | ((input.get(off + 2) as u32) << 8)
+                | ((input.get(off + 1) as u32) << 16)
+                | ((input.get(off) as u32) << 24);
             i += 1;
         }
         result
@@ -77,7 +127,7 @@ const fn process_blocks(
             i += 64;
         } else {
             let num_elems = data.len() - i;
-            blocks.data = clone_from_slice_64(blocks.data, &data, i, num_elems);
+            blocks.data = clone_from_slice_64(blocks.data, data.as_slice(), i, num_elems);
             blocks.len = num_elems as u32;
             break;
         }
@@ -352,7 +402,35 @@ const fn r4(
 /// A sha1 digest
 pub struct Digest {
     /// The sha1 digest's data
-    pub data: [u32; 5],
+    data: [u32; 5],
+}
+
+impl Digest {
+    /// Returns the 160 bit (20 byte) digest as a byte array.
+    pub const fn bytes(&self) -> [u8; 20] {
+        [
+            (self.data[0] >> 24) as u8,
+            (self.data[0] >> 16) as u8,
+            (self.data[0] >> 8) as u8,
+            (self.data[0] >> 0) as u8,
+            (self.data[1] >> 24) as u8,
+            (self.data[1] >> 16) as u8,
+            (self.data[1] >> 8) as u8,
+            (self.data[1] >> 0) as u8,
+            (self.data[2] >> 24) as u8,
+            (self.data[2] >> 16) as u8,
+            (self.data[2] >> 8) as u8,
+            (self.data[2] >> 0) as u8,
+            (self.data[3] >> 24) as u8,
+            (self.data[3] >> 16) as u8,
+            (self.data[3] >> 8) as u8,
+            (self.data[3] >> 0) as u8,
+            (self.data[4] >> 24) as u8,
+            (self.data[4] >> 16) as u8,
+            (self.data[4] >> 8) as u8,
+            (self.data[4] >> 0) as u8,
+        ]
+    }
 }
 
 impl std::fmt::Display for Digest {
@@ -389,9 +467,22 @@ mod tests {
         ];
 
         for &(s, expected) in tests.iter() {
-            let hash = sha1(s.as_bytes()).to_string();
+            let hash = sha1(&ConstString::from_slice(s.as_bytes())).to_string();
 
             assert_eq!(hash, expected);
         }
+
+        let mut head = vec![
+            0x11u8, 0xf4, 0x7a, 0xd5, 0x7b, 0x73, 0x42, 0xc0, 0xab, 0xae, 0x87, 0x8b, 0x1e, 0x16,
+            0xad, 0xee,
+        ];
+        let s = "pinterface({1f6db258-e803-48a1-9546-eb7353398884};pinterface({faa585ea-6214-4217-afda-7f46de5869b3};{96369f54-8eb6-48f0-abce-c1b211e627c3}))";
+        head.extend(s.as_bytes());
+        let mut m = sha1::Sha1::new();
+        m.update(&head);
+        assert_eq!(
+            sha1(&ConstString::from_slice(&head)).to_string(),
+            m.digest().to_string()
+        )
     }
 }
