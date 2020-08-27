@@ -16,7 +16,7 @@ A sha1 implementation useable in const contexts.
 
 # Minimum Supported Rust Version (MSRV)
 
-This crate requires Rust 1.46.0-beta or newer due to the use of some const expression features.
+This crate requires Rust 1.46.0 or newer due to the use of some const expression features.
 
 ## Attribution
 
