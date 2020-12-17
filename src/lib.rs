@@ -8,6 +8,7 @@
 //! }
 //! ```
 
+#![forbid(unsafe_code)]
 #![deny(missing_docs)]
 
 /// A const evaluated sha1 function.
