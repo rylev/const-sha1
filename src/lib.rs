@@ -48,8 +48,8 @@ const fn process_blocks(
         let mut i = 0;
         while i != 16 {
             let off = offset + (i * 4);
-            result[i] 
-                = ((input[off + 3] as u32))
+            result[i] = 0
+                | ((input[off + 3] as u32) << 0)
                 | ((input[off + 2] as u32) << 8)
                 | ((input[off + 1] as u32) << 16)
                 | ((input[off + 0] as u32) << 24);
