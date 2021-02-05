@@ -4,7 +4,7 @@
 //!
 //! ```
 //! const fn signature() -> const_sha1::Digest {
-//!     const_sha1::sha1(&const_sha1::ConstBuffer::from_slice(stringify!(MyType).as_bytes()))
+//!     const_sha1::sha1(stringify!(MyType).as_bytes())
 //! }
 //! ```
 
@@ -17,10 +17,10 @@
 ///
 /// ```
 /// const fn signature() -> const_sha1::Digest {
-///     const_sha1::sha1(&const_sha1::ConstBuffer::from_slice(stringify!(MyType).as_bytes()))
+///     const_sha1::sha1(stringify!(MyType).as_bytes())
 /// }
 /// ```
-pub const fn sha1(data: &ConstBuffer) -> Digest {
+pub const fn sha1(data: &[u8]) -> Digest {
     let state: [u32; 5] = [0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476, 0xc3d2e1f0];
     let len: u64 = 0;
     let blocks = Blocks {
@@ -31,72 +31,6 @@ pub const fn sha1(data: &ConstBuffer) -> Digest {
     digest(state, len, blocks)
 }
 
-/// The size of the ConstBuffer
-pub const BUFFER_SIZE: usize = 1024;
-
-/// A buffer of a constant size suitable for use in const contexts
-pub struct ConstBuffer {
-    data: [u8; BUFFER_SIZE],
-    head: usize,
-}
-
-impl ConstBuffer {
-    /// Convert a slice into a `ConstBuffer`
-    pub const fn from_slice(slice: &[u8]) -> Self {
-        let s = Self::new();
-        s.push_slice(slice)
-    }
-
-    /// Create an empty `ConstBuffer`
-    pub const fn new() -> Self {
-        Self {
-            data: [0; BUFFER_SIZE],
-            head: 0,
-        }
-    }
-
-    /// Push a slice of bytes on to the buffer
-    pub const fn push_slice(self, slice: &[u8]) -> Self {
-        self.push_amount(slice, slice.len())
-    }
-
-    /// Get a byte at a given index
-    pub const fn get(&self, index: usize) -> u8 {
-        self.data[index]
-    }
-
-    /// Get the length of the buffer that has been written to
-    pub const fn len(&self) -> usize {
-        self.head
-    }
-
-    /// Get the buffer as a slice
-    pub const fn as_slice(&self) -> &[u8] {
-        &self.data
-    }
-
-    /// Push another `ConstBuffer` on to the current buffer
-    pub const fn push_other(self, other: Self) -> Self {
-        self.push_amount(other.as_slice(), other.len())
-    }
-
-    const fn push_amount(mut self, slice: &[u8], amount: usize) -> Self {
-        let mut i = 0;
-        while i < amount {
-            self.data[self.head + i] = slice[i];
-            i += 1;
-        }
-        self.head += i;
-        self
-    }
-}
-
-impl std::fmt::Debug for ConstBuffer {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:x?}", &self.data[0..self.head])
-    }
-}
-
 struct Blocks {
     len: u32,
     data: [u8; 64],
@@ -104,20 +38,21 @@ struct Blocks {
 
 const fn process_blocks(
     mut blocks: Blocks,
-    data: &ConstBuffer,
+    data: &[u8],
     mut len: u64,
     mut state: [u32; 5],
 ) -> (Blocks, u64, [u32; 5]) {
-    const fn as_block(input: &ConstBuffer, offset: usize) -> [u32; 16] {
+    const fn as_block(input: &[u8], offset: usize) -> [u32; 16] {
         let mut result = [0u32; 16];
 
         let mut i = 0;
         while i != 16 {
             let off = offset + (i * 4);
-            result[i] = (input.get(off + 3) as u32)
-                | ((input.get(off + 2) as u32) << 8)
-                | ((input.get(off + 1) as u32) << 16)
-                | ((input.get(off) as u32) << 24);
+            result[i] 
+                = ((input[off + 3] as u32))
+                | ((input[off + 2] as u32) << 8)
+                | ((input[off + 1] as u32) << 16)
+                | ((input[off + 0] as u32) << 24);
             i += 1;
         }
         result
@@ -146,7 +81,7 @@ const fn process_blocks(
             i += 64;
         } else {
             let num_elems = data.len() - i;
-            blocks.data = clone_from_slice_64(blocks.data, data.as_slice(), i, num_elems);
+            blocks.data = clone_from_slice_64(blocks.data, data, i, num_elems);
             blocks.len = num_elems as u32;
             break;
         }
@@ -475,20 +410,36 @@ mod tests {
                 "The quick brown fox jumps over the lazy cog",
                 "de9f2c7fd25e1b3afad3e85a0bd17d9b100db4b3",
             ),
-            ("", "da39a3ee5e6b4b0d3255bfef95601890afd80709"),
-            ("testing\n", "9801739daae44ec5293d4e1f53d3f4d2d426d91c"),
-            ("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-             "025ecbd5d70f8fb3c5457cd96bab13fda305dc59"),
-            ("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-             "4300320394f7ee239bcdce7d3b8bcee173a0cd5c"),
-            ("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
-             "cef734ba81a024479e09eb5a75b6ddae62e6abf1"),
-             ("pinterface({1f6db258-e803-48a1-9546-eb7353398884};pinterface({faa585ea-6214-4217-afda-7f46de5869b3};{96369f54-8eb6-48f0-abce-c1b211e627c3}))", 
-             "b1b3deeb1552c97f3f36152f7baeec0f6ac159bc")
+            (
+                "",
+                "da39a3ee5e6b4b0d3255bfef95601890afd80709"),
+            (
+                "testing\n",
+                "9801739daae44ec5293d4e1f53d3f4d2d426d91c"),
+            (
+                "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+                "025ecbd5d70f8fb3c5457cd96bab13fda305dc59"
+            ),
+            (
+                "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+                "4300320394f7ee239bcdce7d3b8bcee173a0cd5c"
+            ),
+            (
+                "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+                "cef734ba81a024479e09eb5a75b6ddae62e6abf1"
+            ),
+            (
+                "pinterface({1f6db258-e803-48a1-9546-eb7353398884};pinterface({faa585ea-6214-4217-afda-7f46de5869b3};{96369f54-8eb6-48f0-abce-c1b211e627c3}))", 
+                "b1b3deeb1552c97f3f36152f7baeec0f6ac159bc"
+            ),
+            (
+                "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nulla aliquet varius molestie. Morbi eu est id massa fringilla gravida. Class aptent taciti sociosqu ad litora torquent per conubia nostra, per inceptos himenaeos. Duis pharetra facilisis ipsum et faucibus. Donec ut magna posuere, pretium nunc nec, egestas sem. Vivamus mattis ex neque, eu vehicula ex pharetra vitae. Aliquam ac cursus nunc. Duis ac nibh non velit ultrices luctus eu eu orci. Aenean suscipit sem a risus convallis ultrices. Nullam accumsan, turpis at pharetra porttitor, augue nisi pulvinar neque, id mattis ex eros ac diam. Praesent ultrices, ex sed elementum viverra, nunc ligula efficitur tellus, vel placerat dui dui in odio. Vivamus gravida pulvinar nisl, sit amet laoreet augue tristique at. Nunc in velit nisi. Praesent suscipit, mi quis dictum aliquet, lacus nulla ornare arcu, sit amet hendrerit urna ex a erat. Donec tempor lorem libero, sed aliquam libero tristique vitae.\nAenean nisl ipsum, pharetra id sollicitudin vitae, rhoncus eu est. Integer at sem sem. Duis venenatis dapibus ornare. Donec fermentum scelerisque lectus, sit amet tempus turpis sodales ut. Maecenas ultrices libero quis pulvinar auctor. Maecenas et enim vel eros pretium iaculis. Aenean luctus convallis lectus ut convallis. Maecenas eu orci quis lacus tincidunt tristique eget id odio. Quisque sit amet dictum nunc, molestie dapibus massa. Integer ultricies enim massa, et semper ligula imperdiet ut. Proin malesuada dapibus magna a bibendum. Phasellus quis vehicula lorem. Quisque sit amet tempor erat, eu mollis odio. Proin consequat interdum cursus. Vivamus ornare enim et tincidunt interdum. Nam suscipit magna a ex tempor tempor eget a nisl.\nProin aliquet ligula mollis bibendum malesuada. Fusce ac eros nunc. Quisque vel commodo ligula, ac efficitur nisl. Phasellus in ipsum et tortor elementum laoreet nec rutrum libero. Cras ut justo eleifend, vulputate sapien vel, tempus libero. Integer a nisi a mauris varius scelerisque vitae at felis. Phasellus sit amet iaculis libero porttitor.",
+                "30648ad988839ad25365fe1674417eca19c7da01"
+            )
         ];
 
         for &(s, expected) in tests.iter() {
-            let hash = sha1(&ConstBuffer::from_slice(s.as_bytes())).to_string();
+            let hash = sha1(s.as_bytes()).to_string();
 
             assert_eq!(hash, expected);
         }
