@@ -22,12 +22,11 @@
 /// ```
 pub const fn sha1(data: &[u8]) -> Digest {
     let state: [u32; 5] = [0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476, 0xc3d2e1f0];
-    let len: u64 = 0;
     let blocks = Blocks {
         len: 0,
         data: [0; 64],
     };
-    let (blocks, len, state) = process_blocks(blocks, data, len, state);
+    let (blocks, len, state) = process_blocks(blocks, data, state);
     digest(state, len, blocks)
 }
 
@@ -39,9 +38,8 @@ struct Blocks {
 const fn process_blocks(
     mut blocks: Blocks,
     data: &[u8],
-    mut len: u64,
     mut state: [u32; 5],
-) -> (Blocks, u64, [u32; 5]) {
+) -> (Blocks, usize, [u32; 5]) {
     const fn as_block(input: &[u8], offset: usize) -> [u32; 16] {
         let mut result = [0u32; 16];
 
@@ -72,16 +70,15 @@ const fn process_blocks(
         data
     }
 
-    let mut i = 0;
-    while i < data.len() {
-        if data.len() - i >= 64 {
-            let chunk_block = as_block(data, i);
-            len += 64;
+    let mut len = 0;
+    while len < data.len() {
+        if data.len() - len >= 64 {
+            let chunk_block = as_block(data, len);
             state = process_state(state, chunk_block);
-            i += 64;
+            len += 64;
         } else {
-            let num_elems = data.len() - i;
-            blocks.data = clone_from_slice_64(blocks.data, data, i, num_elems);
+            let num_elems = data.len() - len;
+            blocks.data = clone_from_slice_64(blocks.data, data, len, num_elems);
             blocks.len = num_elems as u32;
             break;
         }
@@ -184,7 +181,7 @@ const fn process_state(mut state: [u32; 5], block: [u32; 16]) -> [u32; 5] {
     state
 }
 
-const fn digest(mut state: [u32; 5], len: u64, blocks: Blocks) -> Digest {
+const fn digest(mut state: [u32; 5], len: usize, blocks: Blocks) -> Digest {
     const fn clone_from_slice_128(
         mut data: [u8; 128],
         slice: &[u8],
@@ -223,7 +220,7 @@ const fn digest(mut state: [u32; 5], len: u64, blocks: Blocks) -> Digest {
         result
     }
 
-    let bits = (len + (blocks.len as u64)) * 8;
+    let bits = ((len as u64) + (blocks.len as u64)) * 8;
     let extra = [
         (bits >> 56) as u8,
         (bits >> 48) as u8,
