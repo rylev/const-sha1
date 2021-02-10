@@ -36,7 +36,7 @@ pub const fn sha1(data: &[u8]) -> Digest {
 ///
 /// ```
 /// const fn signature() -> const_sha1::Digest {
-///     const_sha1::sha1(stringify!(MyType).as_bytes())
+///     const_sha1::sha1_of_buffer(&const_sha1::ConstBuffer::from_slice(stringify!(MyType).as_bytes()))
 /// }
 /// ```
 pub const fn sha1_of_buffer(data: &ConstBuffer) -> Digest {
