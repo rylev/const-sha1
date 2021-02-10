@@ -26,8 +26,94 @@ pub const fn sha1(data: &[u8]) -> Digest {
         len: 0,
         data: [0; 64],
     };
-    let (blocks, len, state) = process_blocks(blocks, data, state);
+    let (blocks, len, state) = process_blocks(blocks, data, data.len(), state);
     digest(state, len, blocks)
+}
+
+/// A const evaluated sha1 function.
+///
+/// # Use
+///
+/// ```
+/// const fn signature() -> const_sha1::Digest {
+///     const_sha1::sha1(stringify!(MyType).as_bytes())
+/// }
+/// ```
+pub const fn sha1_of_buffer(data: &ConstBuffer) -> Digest {
+    let state: [u32; 5] = [0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476, 0xc3d2e1f0];
+    let blocks = Blocks {
+        len: 0,
+        data: [0; 64],
+    };
+    let (blocks, len, state) = process_blocks(blocks, data.as_slice(), data.len(), state);
+    digest(state, len, blocks)
+}
+
+/// The size of the ConstBuffer.
+pub const BUFFER_SIZE: usize = 1024;
+
+/// A buffer of a constant size suitable for use in const contexts
+/// as a temporary replacement for sized slices.
+pub struct ConstBuffer {
+    data: [u8; BUFFER_SIZE],
+    head: usize,
+}
+
+impl ConstBuffer {
+    /// Convert a slice into a `ConstBuffer`.
+    pub const fn from_slice(slice: &[u8]) -> Self {
+        let s = Self::new();
+        s.push_slice(slice)
+    }
+
+    /// Create an empty `ConstBuffer`.
+    pub const fn new() -> Self {
+        Self {
+            data: [0; BUFFER_SIZE],
+            head: 0,
+        }
+    }
+
+    /// Push a slice of bytes on to the buffer.
+    pub const fn push_slice(self, slice: &[u8]) -> Self {
+        self.push_amount(slice, slice.len())
+    }
+
+    /// Get a byte at a given index.
+    pub const fn get(&self, index: usize) -> u8 {
+        self.data[index]
+    }
+
+    /// Get the length of the buffer that has been written to.
+    pub const fn len(&self) -> usize {
+        self.head
+    }
+
+    /// Get the buffer as a slice.
+    pub const fn as_slice(&self) -> &[u8] {
+        &self.data
+    }
+
+    /// Push another `ConstBuffer` on to the current buffer.
+    pub const fn push_other(self, other: Self) -> Self {
+        self.push_amount(other.as_slice(), other.len())
+    }
+
+    const fn push_amount(mut self, slice: &[u8], amount: usize) -> Self {
+        let mut i = 0;
+        while i < amount {
+            self.data[self.head + i] = slice[i];
+            i += 1;
+        }
+        self.head += i;
+        self
+    }
+}
+
+impl std::fmt::Debug for ConstBuffer {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:x?}", &self.data[0..self.head])
+    }
 }
 
 struct Blocks {
@@ -38,6 +124,7 @@ struct Blocks {
 const fn process_blocks(
     mut blocks: Blocks,
     data: &[u8],
+    data_len: usize,
     mut state: [u32; 5],
 ) -> (Blocks, usize, [u32; 5]) {
     const fn as_block(input: &[u8], offset: usize) -> [u32; 16] {
@@ -71,15 +158,15 @@ const fn process_blocks(
     }
 
     let mut len = 0;
-    while len < data.len() {
-        if data.len() - len >= 64 {
+    while len < data_len {
+        let left = data_len - len;
+        if left >= 64 {
             let chunk_block = as_block(data, len);
             state = process_state(state, chunk_block);
             len += 64;
         } else {
-            let num_elems = data.len() - len;
-            blocks.data = clone_from_slice_64(blocks.data, data, len, num_elems);
-            blocks.len = num_elems as u32;
+            blocks.data = clone_from_slice_64(blocks.data, data, len, left);
+            blocks.len = left as u32;
             break;
         }
     }
@@ -437,6 +524,12 @@ mod tests {
 
         for &(s, expected) in tests.iter() {
             let hash = sha1(s.as_bytes()).to_string();
+
+            assert_eq!(hash, expected);
+        }
+
+        for &(s, expected) in tests.iter().filter(|(s,_)| s.len() <= BUFFER_SIZE) {
+            let hash = sha1_of_buffer(&ConstBuffer::from_slice(s.as_bytes())).to_string();
 
             assert_eq!(hash, expected);
         }
