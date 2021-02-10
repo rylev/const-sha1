@@ -528,7 +528,7 @@ mod tests {
             assert_eq!(hash, expected);
         }
 
-        for &(s, expected) in tests.iter().filter(|(s,_)| s.len() <= BUFFER_SIZE) {
+        for &(s, expected) in tests.iter().filter(|(s, _)| s.len() <= BUFFER_SIZE) {
             let hash = sha1_of_buffer(&ConstBuffer::from_slice(s.as_bytes())).to_string();
 
             assert_eq!(hash, expected);
