@@ -30,16 +30,18 @@ pub const fn sha1(data: &[u8]) -> Digest {
     digest(state, len, blocks)
 }
 
-/// A const evaluated sha1 function.
+/// A const evaluated sha1 function. The function differs from `sha1`
+/// only by usage cases due to the current limitation of constant
+/// functions which should go away when const generics arrive.
 ///
 /// # Use
 ///
 /// ```
 /// const fn signature() -> const_sha1::Digest {
-///     const_sha1::sha1_of_buffer(&const_sha1::ConstBuffer::from_slice(stringify!(MyType).as_bytes()))
+///     const_sha1::sha1_from_const_slice(&const_sha1::ConstSlice::from_slice(stringify!(MyType).as_bytes()))
 /// }
 /// ```
-pub const fn sha1_of_buffer(data: &ConstBuffer) -> Digest {
+pub const fn sha1_from_const_slice(data: &ConstSlice) -> Digest {
     let state: [u32; 5] = [0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476, 0xc3d2e1f0];
     let blocks = Blocks {
         len: 0,
@@ -49,24 +51,24 @@ pub const fn sha1_of_buffer(data: &ConstBuffer) -> Digest {
     digest(state, len, blocks)
 }
 
-/// The size of the ConstBuffer.
+/// The size of the ConstSlice.
 pub const BUFFER_SIZE: usize = 1024;
 
 /// A buffer of a constant size suitable for use in const contexts
-/// as a temporary replacement for sized slices.
-pub struct ConstBuffer {
+/// as a temporary replacement for slices.
+pub struct ConstSlice {
     data: [u8; BUFFER_SIZE],
     head: usize,
 }
 
-impl ConstBuffer {
-    /// Convert a slice into a `ConstBuffer`.
+impl ConstSlice {
+    /// Convert a slice into a `ConstSlice`.
     pub const fn from_slice(slice: &[u8]) -> Self {
         let s = Self::new();
         s.push_slice(slice)
     }
 
-    /// Create an empty `ConstBuffer`.
+    /// Create an empty `ConstSlice`.
     pub const fn new() -> Self {
         Self {
             data: [0; BUFFER_SIZE],
@@ -94,7 +96,7 @@ impl ConstBuffer {
         &self.data
     }
 
-    /// Push another `ConstBuffer` on to the current buffer.
+    /// Push another `ConstSlice` on to the current buffer.
     pub const fn push_other(self, other: Self) -> Self {
         self.push_amount(other.as_slice(), other.len())
     }
@@ -110,7 +112,7 @@ impl ConstBuffer {
     }
 }
 
-impl std::fmt::Debug for ConstBuffer {
+impl std::fmt::Debug for ConstSlice {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:x?}", &self.data[0..self.head])
     }
@@ -529,7 +531,7 @@ mod tests {
         }
 
         for &(s, expected) in tests.iter().filter(|(s, _)| s.len() <= BUFFER_SIZE) {
-            let hash = sha1_of_buffer(&ConstBuffer::from_slice(s.as_bytes())).to_string();
+            let hash = sha1_from_const_slice(&ConstSlice::from_slice(s.as_bytes())).to_string();
 
             assert_eq!(hash, expected);
         }
