@@ -447,7 +447,7 @@ pub struct Digest {
 
 impl Digest {
     /// Returns the 160 bit (20 byte) digest as a byte array.
-    pub const fn bytes(&self) -> [u8; 20] {
+    pub const fn as_bytes(&self) -> [u8; 20] {
         [
             (self.data[0] >> 24) as u8,
             (self.data[0] >> 16) as u8,
