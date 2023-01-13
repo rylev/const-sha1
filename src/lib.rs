@@ -11,6 +11,13 @@
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]
 
+#![cfg_attr(not(feature = "std"), no_std)]
+
+#[cfg(feature = "std")]
+use std::fmt;
+#[cfg(not(feature = "std"))]
+use core::fmt;
+
 /// A const evaluated sha1 function.
 ///
 /// # Use
@@ -112,8 +119,8 @@ impl ConstSlice {
     }
 }
 
-impl std::fmt::Debug for ConstSlice {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::Debug for ConstSlice {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:x?}", &self.data[0..self.head])
     }
 }
@@ -473,8 +480,8 @@ impl Digest {
     }
 }
 
-impl std::fmt::Display for Digest {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+impl fmt::Display for Digest {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for i in self.data.iter() {
             write!(f, "{:08x}", i)?;
         }
@@ -485,6 +492,11 @@ impl std::fmt::Display for Digest {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(not(feature = "std"))]
+    extern crate alloc;
+    #[cfg(not(feature = "std"))]
+    use alloc::string::ToString;
+
     #[test]
     fn it_works() {
         let tests = [
