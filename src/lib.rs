@@ -10,12 +10,8 @@
 
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]
-
 #![cfg_attr(not(feature = "std"), no_std)]
 
-#[cfg(feature = "std")]
-use std::fmt;
-#[cfg(not(feature = "std"))]
 use core::fmt;
 
 /// A const evaluated sha1 function.
