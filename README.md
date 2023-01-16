@@ -18,6 +18,12 @@ A sha1 implementation useable in const contexts.
 
 This crate requires Rust 1.46.0 or newer due to the use of some const expression features.
 
+# No-std
+
+```
+const-sha1 = { version = "0.2.0", default-features = false }
+```
+
 ## Attribution
 
 This code is largely inspired by the following repos:

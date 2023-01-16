@@ -11,3 +11,8 @@ keywords = ["const", "sha1", "hash", "digest"]
 readme = "README.md"
 
 [dependencies]
+
+
+[features]
+default = ["std"]
+std = []
