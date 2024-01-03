@@ -36,8 +36,8 @@ pub const fn sha1(data: &[u8]) -> Digest {
 }
 
 /// A const evaluated sha1 function. The function differs from `sha1`
-/// only by usage cases due to the current limitation of constant
-/// functions which should go away when const generics arrive.
+/// in that it uses a `ConstSlice` which allows for resizing a slice
+/// at const evaluation time which is not permitted with built-in slices.
 ///
 /// # Use
 ///
