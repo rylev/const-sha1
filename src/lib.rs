@@ -11,6 +11,8 @@
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]
 #![cfg_attr(not(feature = "std"), no_std)]
+// Allow identity ops for readability
+#![allow(clippy::identity_op)]
 
 use core::fmt;
 
@@ -92,6 +94,11 @@ impl ConstSlice {
     /// Get the length of the buffer that has been written to.
     pub const fn len(&self) -> usize {
         self.head
+    }
+
+    /// Whether the buffer is empty or not.
+    pub const fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 
     /// Get the buffer as a slice.
